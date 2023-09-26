@@ -6,6 +6,6 @@
     "fiatjaf",
     "cryptograffiti"
   ],
-  "min_lnbits_version": "0.XX.0",
+  "min_lnbits_version": "0.11.0",
   "hidden": false
 }
