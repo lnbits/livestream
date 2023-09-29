@@ -27,7 +27,7 @@ async def lnurl_livestream(ls_id, request: Request):
 
     resp = LnurlPayResponse(
         callback=ClearnetUrl(
-            request.url_for("livestream.lnurl_callback", track_id=track.id),
+            str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
             scheme="https",
         ),
         minSendable=MilliSatoshi(track.min_sendable),
@@ -49,7 +49,7 @@ async def lnurl_track(track_id, request: Request):
 
     resp = LnurlPayResponse(
         callback=ClearnetUrl(
-            request.url_for("livestream.lnurl_callback", track_id=track.id),
+            str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
             scheme="https",
         ),
         minSendable=MilliSatoshi(track.min_sendable),
