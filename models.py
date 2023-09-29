@@ -25,7 +25,7 @@ class Livestream(BaseModel):
     current_track: Optional[int]
 
     def lnurl(self, request: Request) -> Lnurl:
-        url = request.url_for("livestream.lnurl_livestream", ls_id=self.id)
+        url = str(request.url_for("livestream.lnurl_livestream", ls_id=self.id))
         return lnurl_encode(url)
 
     @classmethod
@@ -53,7 +53,7 @@ class Track(BaseModel):
         return max(50_000_000, self.price_msat * 5)
 
     def lnurl(self, request: Request) -> Lnurl:
-        url = request.url_for("livestream.lnurl_track", track_id=self.id)
+        url = str(request.url_for("livestream.lnurl_track", track_id=self.id))
         return lnurl_encode(url)
 
     async def fullname(self) -> str:
@@ -83,7 +83,7 @@ class Track(BaseModel):
         if not self.download_url:
             return None
 
-        url = request.url_for("livestream.track_redirect_download", track_id=self.id)
+        url = str(request.url_for("livestream.track_redirect_download", track_id=self.id))
         url_with_query = f"{url}?p={payment_hash}"
 
         return UrlAction(
