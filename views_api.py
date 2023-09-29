@@ -69,20 +69,22 @@ async def api_update_fee(fee_pct, g: WalletTypeInfo = Depends(get_key_type)):
     return "", HTTPStatus.NO_CONTENT
 
 
+async def check_producer(ls_id, data) -> int:
+    if data.producer_id:
+        p_id = int(data.producer_id)
+    elif data.producer_name:
+        p_id = await add_producer(ls_id, data.producer_name)
+    else:
+        raise TypeError("need either producer_id or producer_name arguments")
+    return p_id
+
+
 @livestream_ext.post("/api/v1/livestream/tracks")
 async def api_add_tracks(
     data: CreateTrack, g: WalletTypeInfo = Depends(get_key_type)
 ):
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
-    assert ls
-
-    if data.producer_id:
-        p_id = int(data.producer_id)
-    elif data.producer_name:
-        p_id = await add_producer(ls.id, data.producer_name)
-    else:
-        raise TypeError("need either producer_id or producer_name arguments")
-
+    p_id = await check_producer(ls.id, data)
     return await add_track(
         ls.id, data.name, data.download_url, data.price_msat or 0, p_id
     )
@@ -93,15 +95,7 @@ async def api_update_tracks(
     data: CreateTrack, id: int, g: WalletTypeInfo = Depends(get_key_type)
 ):
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
-    assert ls
-
-    if data.producer_id:
-        p_id = int(data.producer_id)
-    elif data.producer_name:
-        p_id = await add_producer(ls.id, data.producer_name)
-    else:
-        raise TypeError("need either producer_id or producer_name arguments")
-
+    p_id = await check_producer(ls.id, data)
     return await update_track(
         ls.id, id, data.name, data.download_url, data.price_msat or 0, p_id
     )

@@ -49,17 +49,18 @@ async def get_livestream_by_track(track_id: int) -> Optional[Livestream]:
     return Livestream(**row2) if row2 else None
 
 
-async def get_or_create_livestream_by_wallet(wallet: str) -> Optional[Livestream]:
+async def get_or_create_livestream_by_wallet(wallet: str) -> Livestream:
     row = await db.fetchone(
         "SELECT * FROM livestream.livestreams WHERE wallet = ?", (wallet,)
     )
+    if row:
+        return Livestream(**row)
 
-    if not row:
-        # create on the fly
-        ls_id = await create_livestream(wallet_id=wallet)
-        return await get_livestream(ls_id)
-
-    return Livestream(**row) if row else None
+    # create on the fly
+    ls_id = await create_livestream(wallet_id=wallet)
+    ls = await get_livestream(ls_id)
+    assert ls, "Newly created livestream should exist."
+    return ls
 
 
 async def update_current_track(ls_id: int, track_id: Optional[int]):
