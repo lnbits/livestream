@@ -80,9 +80,7 @@ async def check_producer(ls_id, data) -> int:
 
 
 @livestream_ext.post("/api/v1/livestream/tracks")
-async def api_add_tracks(
-    data: CreateTrack, g: WalletTypeInfo = Depends(get_key_type)
-):
+async def api_add_tracks(data: CreateTrack, g: WalletTypeInfo = Depends(get_key_type)):
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
     p_id = await check_producer(ls.id, data)
     return await add_track(

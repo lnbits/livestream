@@ -1,9 +1,9 @@
 {
-    "repos": [
-        {
-            "id": "livestream",
-            "organisation": "lnbits",
-            "repository": "livestream"
-        }
-    ]
+  "repos": [
+    {
+      "id": "livestream",
+      "organisation": "lnbits",
+      "repository": "livestream"
+    }
+  ]
 }

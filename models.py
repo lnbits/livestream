@@ -83,7 +83,9 @@ class Track(BaseModel):
         if not self.download_url:
             return None
 
-        url = str(request.url_for("livestream.track_redirect_download", track_id=self.id))
+        url = str(
+            request.url_for("livestream.track_redirect_download", track_id=self.id)
+        )
         url_with_query = f"{url}?p={payment_hash}"
 
         return UrlAction(
