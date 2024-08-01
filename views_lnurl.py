@@ -1,17 +1,23 @@
 import math
 from http import HTTPStatus
+from typing import Union
 
-from fastapi import HTTPException, Query, Request
-from lnurl import LnurlErrorResponse, LnurlPayActionResponse, LnurlPayResponse
-from lnurl.models import ClearnetUrl, LightningInvoice, MilliSatoshi
-
+from fastapi import APIRouter, HTTPException, Query, Request
 from lnbits.core.services import create_invoice
+from lnurl import (
+    LnurlErrorResponse,
+    LnurlPayActionResponse,
+    LnurlPayResponse,
+)
+from lnurl.types import ClearnetUrl, DebugUrl, LightningInvoice, MilliSatoshi, OnionUrl
+from pydantic import parse_obj_as
 
-from . import livestream_ext
 from .crud import get_livestream, get_livestream_by_track, get_track
 
+livestream_lnurl_router = APIRouter()
 
-@livestream_ext.get("/lnurl/{ls_id}", name="livestream.lnurl_livestream")
+
+@livestream_lnurl_router.get("/lnurl/{ls_id}", name="livestream.lnurl_livestream")
 async def lnurl_livestream(ls_id, request: Request):
     ls = await get_livestream(ls_id)
     if not ls:
@@ -25,11 +31,13 @@ async def lnurl_livestream(ls_id, request: Request):
             status_code=HTTPStatus.NOT_FOUND, detail="This livestream is offline."
         )
 
+    url = parse_obj_as(
+        Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
+        request.url_for("livestream.lnurl_track", track_id=track.id),
+    )
+
     resp = LnurlPayResponse(
-        callback=ClearnetUrl(
-            str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
-            scheme="https",
-        ),
+        callback=url,
         minSendable=MilliSatoshi(track.min_sendable),
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
@@ -41,17 +49,18 @@ async def lnurl_livestream(ls_id, request: Request):
     return params
 
 
-@livestream_ext.get("/lnurl/t/{track_id}", name="livestream.lnurl_track")
+@livestream_lnurl_router.get("/lnurl/t/{track_id}", name="livestream.lnurl_track")
 async def lnurl_track(track_id, request: Request):
     track = await get_track(track_id)
     if not track:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
 
+    url = parse_obj_as(
+        Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
+        request.url_for("livestream.lnurl_track", track_id=track.id),
+    )
     resp = LnurlPayResponse(
-        callback=ClearnetUrl(
-            str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
-            scheme="https",
-        ),
+        callback=url,
         minSendable=MilliSatoshi(track.min_sendable),
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
@@ -63,7 +72,7 @@ async def lnurl_track(track_id, request: Request):
     return params
 
 
-@livestream_ext.get("/lnurl/cb/{track_id}", name="livestream.lnurl_callback")
+@livestream_lnurl_router.get("/lnurl/cb/{track_id}", name="livestream.lnurl_callback")
 async def lnurl_callback(
     track_id, request: Request, amount: int = Query(...), comment: str = Query("")
 ):
@@ -75,16 +84,25 @@ async def lnurl_callback(
 
     if amount_received < track.min_sendable:
         return LnurlErrorResponse(
-            reason=f"Amount {round(amount_received / 1000)} is smaller than minimum {math.floor(track.min_sendable)}."
+            reason=f"""
+            Amount {round(amount_received / 1000)} is smaller than
+            minimum {math.floor(track.min_sendable)}.
+            """
         ).dict()
     elif track.max_sendable < amount_received:
         return LnurlErrorResponse(
-            reason=f"Amount {round(amount_received / 1000)} is greater than maximum {math.floor(track.max_sendable)}."
+            reason=f"""
+            Amount {round(amount_received / 1000)} is greater than
+            maximum {math.floor(track.max_sendable)}.
+            """
         ).dict()
 
     if len(comment or "") > 300:
         return LnurlErrorResponse(
-            reason=f"Got a comment with {len(comment)} characters, but can only accept 300"
+            reason=f"""
+            Got a comment with {len(comment)} characters,
+            but can only accept 300
+            """
         ).dict()
 
     ls = await get_livestream_by_track(track_id)
@@ -109,10 +127,14 @@ async def lnurl_callback(
     if amount_received < track.price_msat:
         success_action = None
     else:
-        success_action = track.success_action(payment_hash, request=request)
+        url = request.url_for("livestream.track_download", track_id=track.id)
+        url_with_query = f"{url}?p={payment_hash}"
+        success_action = parse_obj_as(
+            Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
+            url_with_query,
+        )
 
-    resp = LnurlPayActionResponse(
-        pr=LightningInvoice(payment_request), successAction=success_action, routes=[]
-    )
+    invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment_request))
+    resp = LnurlPayActionResponse(pr=invoice, successAction=success_action, routes=[])
 
     return resp.dict()

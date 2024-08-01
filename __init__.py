@@ -3,11 +3,11 @@ import asyncio
 from fastapi import APIRouter
 from loguru import logger
 
-from lnbits.db import Database
-from lnbits.helpers import template_renderer
-from lnbits.tasks import create_permanent_unique_task
-
-db = Database("ext_livestream")
+from .crud import db
+from .tasks import wait_for_paid_invoices
+from .views import livestream_generic_router
+from .views_api import livestream_api_router
+from .views_lnurl import livestream_lnurl_router
 
 livestream_static_files = [
     {
@@ -17,17 +17,9 @@ livestream_static_files = [
 ]
 
 livestream_ext: APIRouter = APIRouter(prefix="/livestream", tags=["livestream"])
-
-
-def livestream_renderer():
-    return template_renderer(["livestream/templates"])
-
-
-from .lnurl import *  # noqa: F401,F403
-from .tasks import wait_for_paid_invoices
-from .views import *  # noqa: F401,F403
-from .views_api import *  # noqa: F401,F403
-
+livestream_ext.include_router(livestream_generic_router)
+livestream_ext.include_router(livestream_api_router)
+livestream_ext.include_router(livestream_lnurl_router)
 
 scheduled_tasks: list[asyncio.Task] = []
 
@@ -41,5 +33,16 @@ def livestream_stop():
 
 
 def livestream_start():
+    from lnbits.tasks import create_permanent_unique_task
+
     task = create_permanent_unique_task("ext_livestream", wait_for_paid_invoices)
     scheduled_tasks.append(task)
+
+
+__all__ = [
+    "livestream_ext",
+    "livestream_static_files",
+    "livestream_start",
+    "livestream_stop",
+    "db",
+]
