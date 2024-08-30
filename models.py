@@ -5,7 +5,6 @@ from typing import Optional
 from fastapi import Query, Request
 from lnurl import Lnurl
 from lnurl import encode as lnurl_encode
-from lnurl.models import ClearnetUrl, Max144Str, UrlAction
 from lnurl.types import LnurlPayMetadata
 from pydantic import BaseModel
 
@@ -73,23 +72,12 @@ class Track(BaseModel):
         ) + " Like this track? Send some sats in appreciation."
 
         if self.download_url:
-            description += f" Send {round(self.price_msat/1000)} sats or more and you can download it."
+            description += (
+                f"Send {round(self.price_msat/1000)} "
+                "sats or more and you can download it."
+            )
 
         return LnurlPayMetadata(json.dumps([["text/plain", description]]))
-
-    def success_action(
-        self, payment_hash: str, request: Request
-    ) -> Optional[UrlAction]:
-        if not self.download_url:
-            return None
-
-        url = str(request.url_for("livestream.track_redirect_download", track_id=self.id))
-        url_with_query = f"{url}?p={payment_hash}"
-
-        return UrlAction(
-            url=ClearnetUrl(url_with_query, scheme="https"),
-            description=Max144Str(f"Download the track {self.name}!"),
-        )
 
 
 class Producer(BaseModel):

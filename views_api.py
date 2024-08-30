@@ -1,11 +1,10 @@
 from http import HTTPStatus
 
-from fastapi import Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+from lnbits.core.models import WalletTypeInfo
+from lnbits.decorators import get_key_type
 from lnurl.exceptions import InvalidUrl as LnurlInvalidUrl
 
-from lnbits.decorators import WalletTypeInfo, get_key_type
-
-from . import livestream_ext
 from .crud import (
     add_producer,
     add_track,
@@ -19,8 +18,10 @@ from .crud import (
 )
 from .models import CreateTrack
 
+livestream_api_router = APIRouter()
 
-@livestream_ext.get("/api/v1/livestream")
+
+@livestream_api_router.get("/api/v1/livestream")
 async def api_livestream_from_wallet(
     req: Request, g: WalletTypeInfo = Depends(get_key_type)
 ):
@@ -41,27 +42,30 @@ async def api_livestream_from_wallet(
                 "producers": [producer.dict() for producer in producers],
             },
         }
-    except LnurlInvalidUrl:
+    except LnurlInvalidUrl as exc:
         raise HTTPException(
             status_code=HTTPStatus.UPGRADE_REQUIRED,
-            detail="LNURLs need to be delivered over a publically accessible `https` domain or Tor.",
-        )
+            detail=(
+                "LNURLs need to be delivered over a publically "
+                "accessible `https` domain or Tor."
+            ),
+        ) from exc
 
 
-@livestream_ext.put("/api/v1/livestream/track/{track_id}")
+@livestream_api_router.put("/api/v1/livestream/track/{track_id}")
 async def api_update_track(track_id, g: WalletTypeInfo = Depends(get_key_type)):
     try:
-        id = int(track_id)
+        tid = int(track_id)
     except ValueError:
-        id = 0
+        tid = 0
 
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
     assert ls
-    await update_current_track(ls.id, None if id <= 0 else id)
+    await update_current_track(ls.id, None if tid <= 0 else tid)
     return "", HTTPStatus.NO_CONTENT
 
 
-@livestream_ext.put("/api/v1/livestream/fee/{fee_pct}")
+@livestream_api_router.put("/api/v1/livestream/fee/{fee_pct}")
 async def api_update_fee(fee_pct, g: WalletTypeInfo = Depends(get_key_type)):
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
     assert ls
@@ -79,10 +83,8 @@ async def check_producer(ls_id, data) -> int:
     return p_id
 
 
-@livestream_ext.post("/api/v1/livestream/tracks")
-async def api_add_tracks(
-    data: CreateTrack, g: WalletTypeInfo = Depends(get_key_type)
-):
+@livestream_api_router.post("/api/v1/livestream/tracks")
+async def api_add_tracks(data: CreateTrack, g: WalletTypeInfo = Depends(get_key_type)):
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
     p_id = await check_producer(ls.id, data)
     return await add_track(
@@ -90,18 +92,18 @@ async def api_add_tracks(
     )
 
 
-@livestream_ext.put("/api/v1/livestream/tracks/{id}")
+@livestream_api_router.put("/api/v1/livestream/tracks/{id}")
 async def api_update_tracks(
-    data: CreateTrack, id: int, g: WalletTypeInfo = Depends(get_key_type)
+    data: CreateTrack, tid: int, g: WalletTypeInfo = Depends(get_key_type)
 ):
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
     p_id = await check_producer(ls.id, data)
     return await update_track(
-        ls.id, id, data.name, data.download_url, data.price_msat or 0, p_id
+        ls.id, tid, data.name, data.download_url, data.price_msat or 0, p_id
     )
 
 
-@livestream_ext.delete("/api/v1/livestream/tracks/{track_id}")
+@livestream_api_router.delete("/api/v1/livestream/tracks/{track_id}")
 async def api_delete_track(track_id, g: WalletTypeInfo = Depends(get_key_type)):
     ls = await get_or_create_livestream_by_wallet(g.wallet.id)
     assert ls

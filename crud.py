@@ -1,17 +1,18 @@
-from typing import List, Optional
+from typing import Optional
 
 from lnbits.core.crud import create_account, create_wallet
-from lnbits.db import SQLITE
+from lnbits.db import SQLITE, Database
 
-from . import db
 from .models import Livestream, Producer, Track
+
+db = Database("ext_livestream")
 
 
 async def create_livestream(*, wallet_id: str) -> int:
     returning = "" if db.type == SQLITE else "RETURNING ID"
     method = db.execute if db.type == SQLITE else db.fetchone
 
-    result = await (method)(
+    result = await method(
         f"""
         INSERT INTO livestream.livestreams (wallet)
         VALUES (?)
@@ -85,7 +86,8 @@ async def add_track(
 ) -> int:
     result = await db.execute(
         """
-        INSERT INTO livestream.tracks (livestream, name, download_url, price_msat, producer)
+        INSERT INTO livestream.tracks \
+        (livestream, name, download_url, price_msat, producer)
         VALUES (?, ?, ?, ?, ?)
         """,
         (livestream, name, download_url, price_msat, producer),
@@ -129,7 +131,7 @@ async def get_track(track_id: Optional[int]) -> Optional[Track]:
     return Track(**row) if row else None
 
 
-async def get_tracks(livestream: int) -> List[Track]:
+async def get_tracks(livestream: int) -> list[Track]:
     rows = await db.fetchall(
         """
         SELECT id, download_url, price_msat, name, producer
@@ -193,7 +195,7 @@ async def get_producer(producer_id: int) -> Optional[Producer]:
     return Producer(**row) if row else None
 
 
-async def get_producers(livestream: int) -> List[Producer]:
+async def get_producers(livestream: int) -> list[Producer]:
     rows = await db.fetchall(
         """
         SELECT id, "user", wallet, name
