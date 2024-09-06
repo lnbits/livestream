@@ -3,6 +3,6 @@
   "short_description": "Sell tracks and split revenue (lnurl-pay)",
   "tile": "/livestream/static/image/livestream.png",
   "contributors": ["fiatjaf", "cryptograffiti"],
-  "min_lnbits_version": "0.12.5",
+  "min_lnbits_version": "1.0.0",
   "hidden": false
 }
