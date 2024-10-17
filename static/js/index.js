@@ -1,8 +1,4 @@
-/* globals Quasar, Vue, _, VueQrcode, windowMixin, LNbits, LOCALE */
-
-Vue.component(VueQrcode.name, VueQrcode)
-
-new Vue({
+window.app = Vue.createApp({
   el: '#vue',
   mixins: [windowMixin],
   data() {
@@ -80,7 +76,7 @@ new Vue({
             this.tracksMap[payment.extra.track] || {name: '[unknown]'}
           ).name
 
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Someone paid <b>${satoshiAmount} sat</b> for the track <em>${trackName}</em>.`,
             caption: payment.extra.comment
               ? `<em>"${payment.extra.comment}"</em>`
@@ -110,7 +106,7 @@ new Vue({
           producer_id: typeof producer === 'object' ? producer.id : undefined
         })
         .then(response => {
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Track '${this.trackDialog.data.name}' added.`,
             timeout: 700
           })
@@ -148,7 +144,7 @@ new Vue({
               this.selectedWallet.inkey
             )
             .then(response => {
-              this.$q.notify({
+              Quasar.Notify.create({
                 message: `Track deleted`,
                 timeout: 700
               })
@@ -178,7 +174,7 @@ new Vue({
         .then(() => {
           this.livestream.current_track = track
           this.nextCurrentTrack = track
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Current track updated.`,
             timeout: 700
           })
@@ -195,7 +191,7 @@ new Vue({
           this.selectedWallet.inkey
         )
         .then(() => {
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Percentage updated.`,
             timeout: 700
           })

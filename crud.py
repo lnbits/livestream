@@ -20,32 +20,33 @@ async def create_livestream(wallet_id: str) -> int:
 
 
 async def get_livestream(ls_id: int) -> Optional[Livestream]:
-    row = await db.fetchone(
+    return await db.fetchone(
         "SELECT * FROM livestream.livestreams WHERE id = :id",
         {"id": ls_id},
+        Livestream,
     )
-    return Livestream(**row) if row else None
 
 
 async def get_livestream_by_track(track_id: int) -> Optional[Livestream]:
-    row = await db.fetchone(
-        "SELECT * FROM livestream.tracks WHERE id = :id",
+    return await db.fetchone(
+        """
+        SELECT a.* FROM livestream.tracks as b
+        LEFT JOIN livestream.livestreams as a ON a.id = b.livestream
+        WHERE b.id = :id
+        """,
         {"id": track_id},
+        Livestream,
     )
-    row2 = await db.fetchone(
-        "SELECT * FROM livestream.livestreams WHERE id = :id",
-        {"id": row["livestream"]},
-    )
-    return Livestream(**row2) if row2 else None
 
 
 async def get_or_create_livestream_by_wallet(wallet: str) -> Livestream:
-    row = await db.fetchone(
+    livestream = await db.fetchone(
         "SELECT * FROM livestream.livestreams WHERE wallet = :wallet",
         {"wallet": wallet},
+        Livestream,
     )
-    if row:
-        return Livestream(**row)
+    if livestream:
+        return livestream
 
     # create on the fly
     ls_id = await create_livestream(wallet)
@@ -121,29 +122,26 @@ async def update_track(
     return result._result_proxy.lastrowid
 
 
-async def get_track(track_id: Optional[int]) -> Optional[Track]:
-    if not track_id:
-        return None
-
-    row = await db.fetchone(
+async def get_track(track_id: int) -> Optional[Track]:
+    return await db.fetchone(
         """
         SELECT id, download_url, price_msat, name, producer
         FROM livestream.tracks WHERE id = :id
         """,
         {"id": track_id},
+        Track,
     )
-    return Track(**row) if row else None
 
 
 async def get_tracks(livestream: int) -> list[Track]:
-    rows = await db.fetchall(
+    return await db.fetchall(
         """
         SELECT id, download_url, price_msat, name, producer
         FROM livestream.tracks WHERE livestream = :livestream
         """,
         {"livestream": livestream},
+        Track,
     )
-    return [Track(**row) for row in rows]
 
 
 async def delete_track_from_livestream(livestream: int, track_id: int):
@@ -155,18 +153,19 @@ async def delete_track_from_livestream(livestream: int, track_id: int):
     )
 
 
-async def add_producer(livestream: int, name: str) -> int:
+async def add_producer(livestream_id: int, name: str) -> int:
     name = name.strip()
 
-    existing = await db.fetchone(
+    livestream = await db.fetchone(
         """
         SELECT id FROM livestream.producers
         WHERE livestream = :livestream AND lower(name) = :name
         """,
-        {"livestream": livestream, "name": name.lower()},
+        {"livestream": livestream_id, "name": name.lower()},
+        Livestream,
     )
-    if existing:
-        return existing["id"]
+    if livestream:
+        return livestream.id
 
     user = await create_account()
     wallet = await create_wallet(user_id=user.id, wallet_name="livestream: " + name)
@@ -176,28 +175,33 @@ async def add_producer(livestream: int, name: str) -> int:
         INSERT INTO livestream.producers (livestream, name, "user", wallet)
         VALUES (:livestream, :name, :user, :wallet)
         """,
-        {"livestream": livestream, "name": name, "user": user.id, "wallet": wallet.id},
+        {
+            "livestream": livestream_id,
+            "name": name,
+            "user": user.id,
+            "wallet": wallet.id,
+        },
     )
     return 1
 
 
 async def get_producer(producer_id: int) -> Optional[Producer]:
-    row = await db.fetchone(
+    return await db.fetchone(
         """
         SELECT id, "user", wallet, name
         FROM livestream.producers WHERE id = :id
         """,
         {"id": producer_id},
+        Producer,
     )
-    return Producer(**row) if row else None
 
 
 async def get_producers(livestream: int) -> list[Producer]:
-    rows = await db.fetchall(
+    return await db.fetchall(
         """
         SELECT id, "user", wallet, name
         FROM livestream.producers WHERE livestream = :livestream
         """,
         {"livestream": livestream},
+        Producer,
     )
-    return [Producer(**row) for row in rows]

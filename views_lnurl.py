@@ -25,11 +25,13 @@ async def lnurl_livestream(ls_id, request: Request):
             status_code=HTTPStatus.NOT_FOUND, detail="Livestream not found."
         )
 
-    track = await get_track(ls.current_track)
-    if not track:
+    if not ls.current_track:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="This livestream is offline."
         )
+    track = await get_track(ls.current_track)
+    if not track:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
 
     url = parse_obj_as(
         Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
