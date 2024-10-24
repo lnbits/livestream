@@ -150,10 +150,7 @@ async def get_producer(producer_id: str) -> Optional[Producer]:
 
 async def get_producers(livestream: str) -> list[Producer]:
     return await db.fetchall(
-        """
-        SELECT id, "user", wallet, name
-        FROM livestream.producers WHERE livestream = :livestream
-        """,
+        "SELECT * FROM livestream.producers WHERE livestream = :livestream",
         {"livestream": livestream},
         Producer,
     )

@@ -31,6 +31,12 @@ window.app = Vue.createApp({
       )
     }
   },
+  watch: {
+      selectedWallet() {
+          this.loadLivestream()
+          this.startPaymentNotifier()
+      }
+  },
   methods: {
     getTrackLabel(trackId) {
       if (!trackId) return
@@ -45,11 +51,6 @@ window.app = Vue.createApp({
         this.trackDialog.data.producer.length === 0
       )
     },
-    changedWallet(wallet) {
-      this.selectedWallet = wallet
-      this.loadLivestream()
-      this.startPaymentNotifier()
-    },
     loadLivestream() {
       LNbits.api
         .request(
@@ -59,7 +60,7 @@ window.app = Vue.createApp({
         )
         .then(response => {
           this.livestream = response.data
-          this.nextCurrentTrack = this.livestream.current_track
+          this.nextCurrentTrack = this.livestream.livestream.current_track
         })
         .catch(err => {
           LNbits.utils.notifyApiError(err)
@@ -97,7 +98,7 @@ window.app = Vue.createApp({
         : ['POST', '/livestream/api/v1/livestream/track']
 
       LNbits.api
-        .request(method, path, this.selectedWallet.inkey, {
+        .request(method, path, this.selectedWallet.adminkey, {
           download_url:
             download_url && download_url.length > 0 ? download_url : undefined,
           name,
@@ -141,7 +142,7 @@ window.app = Vue.createApp({
             .request(
               'DELETE',
               '/livestream/api/v1/livestream/tracks/' + trackId,
-              this.selectedWallet.inkey
+              this.selectedWallet.adminkey
             )
             .then(response => {
               Quasar.Notify.create({
@@ -159,8 +160,7 @@ window.app = Vue.createApp({
         })
     },
     updateCurrentTrack(track) {
-      console.log(this.nextCurrentTrack, this.livestream)
-      if (this.livestream.current_track === track) {
+      if (this.livestream.livestream.current_track === track) {
         // if clicking the same, stop it
         track = 0
       }
@@ -169,10 +169,10 @@ window.app = Vue.createApp({
         .request(
           'PUT',
           '/livestream/api/v1/livestream/track/' + track,
-          this.selectedWallet.inkey
+          this.selectedWallet.adminkey
         )
         .then(() => {
-          this.livestream.current_track = track
+          this.livestream.livestream.current_track = track
           this.nextCurrentTrack = track
           Quasar.Notify.create({
             message: `Current track updated.`,
@@ -187,8 +187,8 @@ window.app = Vue.createApp({
       LNbits.api
         .request(
           'PUT',
-          '/livestream/api/v1/livestream/fee/' + this.livestream.fee_pct,
-          this.selectedWallet.inkey
+          '/livestream/api/v1/livestream/fee/' + this.livestream.livestream.fee_pct,
+          this.selectedWallet.adminkey
         )
         .then(() => {
           Quasar.Notify.create({
@@ -206,7 +206,5 @@ window.app = Vue.createApp({
   },
   created() {
     this.selectedWallet = this.g.user.wallets[0]
-    this.loadLivestream()
-    this.startPaymentNotifier()
   }
 })

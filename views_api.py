@@ -18,7 +18,7 @@ from .crud import (
     update_livestream_fee,
     update_track,
 )
-from .models import CreateTrack
+from .models import CreateTrack, LivestreamOverview
 
 livestream_api_router = APIRouter()
 
@@ -26,31 +26,17 @@ livestream_api_router = APIRouter()
 @livestream_api_router.get("/api/v1/livestream")
 async def api_livestream_from_wallet(
     req: Request, key_info: WalletTypeInfo = Depends(require_invoice_key)
-):
+) -> LivestreamOverview:
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
     tracks = await get_tracks(ls.id)
     producers = await get_producers(ls.id)
-
-    try:
-        return {
-            **ls.dict(),
-            **{
-                "lnurl": ls.lnurl(request=req),
-                "tracks": [
-                    dict(lnurl=track.lnurl(request=req), **track.dict())
-                    for track in tracks
-                ],
-                "producers": [producer.dict() for producer in producers],
-            },
-        }
-    except LnurlInvalidUrl as exc:
-        raise HTTPException(
-            status_code=HTTPStatus.UPGRADE_REQUIRED,
-            detail=(
-                "LNURLs need to be delivered over a publically "
-                "accessible `https` domain or Tor."
-            ),
-        ) from exc
+    overview = LivestreamOverview(
+        lnurl=str(ls.lnurl(request=req)),
+        livestream=ls,
+        tracks=tracks,
+        producers=producers
+    )
+    return overview
 
 
 @livestream_api_router.put("/api/v1/livestream/track/{track_id}")

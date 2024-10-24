@@ -78,3 +78,10 @@ class Producer(BaseModel):
     user: str
     wallet: str
     name: str
+
+
+class LivestreamOverview(BaseModel):
+    lnurl: str
+    livestream: Livestream
+    tracks: list[Track]
+    producers: list[Producer]

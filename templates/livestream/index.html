@@ -80,7 +80,6 @@
               <q-th auto-width>Producer</q-th>
               <q-th auto-width>Price</q-th>
               <q-th auto-width>Download URL</q-th>
-              <q-th auto-width></q-th>
             </q-tr>
           </template>
           <template v-slot:body="props">
@@ -96,23 +95,6 @@
                   @click="updateCurrentTrack(props.row.id)"
                   target="_blank"
                 ></q-btn>
-              </q-td>
-              <q-td auto-width v-text="props.row.name"></q-td>
-              <q-td
-                auto-width
-                v-text="producersMap[props.row.producer].name"
-              ></q-td>
-              <q-td
-                class="text-right"
-                auto-width
-                v-tex="Math.round(props.row.price_msat / 1000)"
-              ></q-td>
-              <q-td
-                class="text-center"
-                auto-width
-                v-text="props.row.download_url"
-              ></q-td>
-              <q-td auto-width>
                 <q-btn
                   flat
                   dense
@@ -132,6 +114,21 @@
                   target="_blank"
                 ></q-btn>
               </q-td>
+              <q-td auto-width v-text="props.row.name"></q-td>
+              <q-td
+                auto-width
+                v-text="producersMap[props.row.producer].name"
+              ></q-td>
+              <q-td
+                class="text-right"
+                auto-width
+                v-tex="Math.round(props.row.price_msat / 1000)"
+              ></q-td>
+              <q-td
+                class="text-center"
+                auto-width
+                v-text="props.row.download_url"
+              ></q-td>
             </q-tr>
           </template>
         </q-table>
@@ -186,7 +183,6 @@
             v-model="selectedWallet"
             label="Using wallet:"
             option-label="name"
-            @input="changedWallet"
           >
           </q-select>
         </q-form>
