@@ -25,12 +25,12 @@
             />
           </div>
           <div class="col">
-            {% raw %}
             <q-btn unelevated color="primary" type="submit">
-              {{ nextCurrentTrack && nextCurrentTrack ===
-              livestream.current_track ? 'Stop' : 'Set' }} current track
+              <span
+                v-text="nextCurrentTrack === livestream.current_track ? 'Stop' : 'Set'"
+              ></span>
+              current track
             </q-btn>
-            {% endraw %}
           </div>
         </div>
       </q-form>
@@ -69,12 +69,10 @@
         <q-table
           dense
           flat
-          :data="sortedTracks"
+          :rows="sortedTracks"
           row-key="id"
           no-data-label="No tracks added yet"
-          :pagination="{rowsPerPage: 0}"
         >
-          {% raw %}
           <template v-slot:header="props">
             <q-tr :props="props">
               <q-th auto-width></q-th>
@@ -82,7 +80,6 @@
               <q-th auto-width>Producer</q-th>
               <q-th auto-width>Price</q-th>
               <q-th auto-width>Download URL</q-th>
-              <q-th auto-width></q-th>
             </q-tr>
           </template>
           <template v-slot:body="props">
@@ -98,18 +95,6 @@
                   @click="updateCurrentTrack(props.row.id)"
                   target="_blank"
                 ></q-btn>
-              </q-td>
-              <q-td auto-width>{{ props.row.name }}</q-td>
-              <q-td auto-width>
-                {{ producersMap[props.row.producer].name }}
-              </q-td>
-              <q-td class="text-right" auto-width
-                >{{ Math.round(props.row.price_msat / 1000) }}</q-td
-              >
-              <q-td class="text-center" auto-width
-                >{{ props.row.download_url }}</q-td
-              >
-              <q-td auto-width>
                 <q-btn
                   flat
                   dense
@@ -129,9 +114,23 @@
                   target="_blank"
                 ></q-btn>
               </q-td>
+              <q-td auto-width v-text="props.row.name"></q-td>
+              <q-td
+                auto-width
+                v-text="producersMap[props.row.producer].name"
+              ></q-td>
+              <q-td
+                class="text-right"
+                auto-width
+                v-tex="Math.round(props.row.price_msat / 1000)"
+              ></q-td>
+              <q-td
+                class="text-center"
+                auto-width
+                v-text="props.row.download_url"
+              ></q-td>
             </q-tr>
           </template>
-          {% endraw %}
         </q-table>
       </q-card-section>
     </q-card>
@@ -146,12 +145,10 @@
         <q-table
           dense
           flat
-          :data="livestream.producers"
+          :rows="livestream.producers"
           row-key="id"
           no-data-label="To include a producer, add a track"
-          :pagination="{rowsPerPage: 0}"
         >
-          {% raw %}
           <template v-slot:header="props">
             <q-tr :props="props">
               <q-th auto-width>Name</q-th>
@@ -160,19 +157,18 @@
           </template>
           <template v-slot:body="props">
             <q-tr :props="props">
-              <q-td auto-width>{{ props.row.name }}</q-td>
+              <q-td auto-width v-text="props.row.name"></q-td>
               <q-td class="text-center" auto-width>
                 <a
                   class="text-secondary"
                   target="_blank"
                   :href="'/wallet?usr=' + props.row.user + '&wal=' + props.row.wallet"
+                  v-text="props.row.wallet"
                 >
-                  {{ props.row.wallet }}
                 </a>
               </q-td>
             </q-tr>
           </template>
-          {% endraw %}
         </q-table>
       </q-card-section>
     </q-card>
@@ -184,26 +180,18 @@
             filled
             dense
             :options="g.user.wallets"
-            :value="selectedWallet"
+            v-model="selectedWallet"
             label="Using wallet:"
             option-label="name"
-            @input="changedWallet"
           >
           </q-select>
         </q-form>
 
         <a class="text-secondary" :href="'lightning:' + livestream.lnurl">
-          <q-responsive
-            :ratio="1"
-            class="q-ma-xl q-mx-auto"
-            style="max-width: 300px"
-          >
-            <qrcode
-              :value="livestream.lnurl"
-              :options="{width: 800}"
-              class="rounded-borders"
-            ></qrcode>
-          </q-responsive>
+          <lnbits-qrcode
+            :value="livestream.lnurl"
+            class="rounded-borders"
+          ></lnbits-qrcode>
         </a>
 
         <q-btn
@@ -241,13 +229,10 @@
           Standalone QR Code for this track
         </p>
         <a class="text-secondary" :href="'lightning:' + trackDialog.data.lnurl">
-          <q-responsive :ratio="1" class="q-mx-sm">
-            <qrcode
-              :value="'lightning:' + trackDialog.data.lnurl.toUpperCase()"
-              :options="{width: 800}"
-              class="rounded-borders"
-            ></qrcode>
-          </q-responsive>
+          <lnbits-qrcode
+            :value="'lightning:' + trackDialog.data.lnurl.toUpperCase()"
+            class="rounded-borders"
+          ></lnbits-qrcode>
         </a>
 
         <q-btn
