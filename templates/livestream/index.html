@@ -72,7 +72,6 @@
           :rows="sortedTracks"
           row-key="id"
           no-data-label="No tracks added yet"
-          v-model:pagination="{rowsPerPage: 0}"
         >
           <template v-slot:header="props">
             <q-tr :props="props">
@@ -152,7 +151,6 @@
           :rows="livestream.producers"
           row-key="id"
           no-data-label="To include a producer, add a track"
-          v-model:pagination="{rowsPerPage: 0}"
         >
           <template v-slot:header="props">
             <q-tr :props="props">
@@ -185,7 +183,7 @@
             filled
             dense
             :options="g.user.wallets"
-            :value="selectedWallet"
+            v-model="selectedWallet"
             label="Using wallet:"
             option-label="name"
             @input="changedWallet"

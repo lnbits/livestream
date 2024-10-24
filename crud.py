@@ -2,24 +2,23 @@ from typing import Optional
 
 from lnbits.core.crud import create_account, create_wallet
 from lnbits.db import Database
+from lnbits.helpers import urlsafe_short_hash
 
-from .models import Livestream, Producer, Track
+from .models import CreateTrack, Livestream, Producer, Track
 
 db = Database("ext_livestream")
 
 
-async def create_livestream(wallet_id: str) -> int:
-    await db.fetchone(
-        """
-        INSERT INTO livestream.livestreams (wallet)
-        VALUES (:wallet_id)
-        """,
-        {"wallet_id": wallet_id},
+async def create_livestream(wallet_id: str) -> Livestream:
+    livestream = Livestream(
+        id=urlsafe_short_hash(),
+        wallet=wallet_id,
     )
-    return 0
+    await db.insert("livestream.livestreams", livestream)
+    return livestream
 
 
-async def get_livestream(ls_id: int) -> Optional[Livestream]:
+async def get_livestream(ls_id: str) -> Optional[Livestream]:
     return await db.fetchone(
         "SELECT * FROM livestream.livestreams WHERE id = :id",
         {"id": ls_id},
@@ -27,7 +26,7 @@ async def get_livestream(ls_id: int) -> Optional[Livestream]:
     )
 
 
-async def get_livestream_by_track(track_id: int) -> Optional[Livestream]:
+async def get_livestream_by_track(track_id: str) -> Optional[Livestream]:
     return await db.fetchone(
         """
         SELECT a.* FROM livestream.tracks as b
@@ -49,102 +48,63 @@ async def get_or_create_livestream_by_wallet(wallet: str) -> Livestream:
         return livestream
 
     # create on the fly
-    ls_id = await create_livestream(wallet)
-    ls = await get_livestream(ls_id)
-    assert ls, "Newly created livestream should exist."
+    ls = await create_livestream(wallet)
     return ls
 
 
-async def update_current_track(ls_id: int, track_id: Optional[int]):
+async def update_current_track(ls_id: str, track_id: Optional[str]):
     await db.execute(
         "UPDATE livestream.livestreams SET current_track = :track_id WHERE id = :id",
         {"track_id": track_id, "id": ls_id},
     )
 
 
-async def update_livestream_fee(ls_id: int, fee_pct: int):
+async def update_livestream_fee(ls_id: str, fee_pct: int):
     await db.execute(
         "UPDATE livestream.livestreams SET fee_pct = :fee_pct WHERE id = :id",
         {"fee_pct": fee_pct, "id": ls_id},
     )
 
 
-async def add_track(
-    livestream: int,
-    name: str,
-    download_url: Optional[str],
-    price_msat: int,
-    producer: Optional[int],
-) -> int:
-    result = await db.execute(
-        """
-        INSERT INTO livestream.tracks
-        (livestream, name, download_url, price_msat, producer)
-        VALUES (:livestream, :name, :download_url, :price_msat, :producer)
-        """,
-        {
-            "livestream": livestream,
-            "name": name,
-            "download_url": download_url,
-            "price_msat": price_msat,
-            "producer": producer,
-        },
+async def create_track(
+    livestream: str,
+    producer: str,
+    data: CreateTrack,
+) -> Track:
+    track = Track(
+        id=urlsafe_short_hash(),
+        livestream=livestream,
+        producer=producer,
+        name=data.name,
+        download_url=data.download_url,
+        price_msat=data.price_msat,
     )
-    return result._result_proxy.lastrowid
+    await db.insert("livestream.tracks", track)
+    return track
 
 
-async def update_track(
-    livestream: int,
-    track_id: int,
-    name: str,
-    download_url: Optional[str],
-    price_msat: int,
-    producer: int,
-) -> int:
-    result = await db.execute(
-        """
-        UPDATE livestream.tracks SET
-          name = :name,
-          download_url = :download_url,
-          price_msat = :price_msat,
-          producer = :producer
-        WHERE livestream = :livestream AND id = :id
-        """,
-        {
-            "livestream": livestream,
-            "id": track_id,
-            "name": name,
-            "download_url": download_url,
-            "price_msat": price_msat,
-            "producer": producer,
-        },
-    )
-    return result._result_proxy.lastrowid
+async def update_track(track: Track) -> Track:
+    await db.update("livestream.tracks", track)
+    return track
 
 
-async def get_track(track_id: int) -> Optional[Track]:
+async def get_track(track_id: str) -> Optional[Track]:
     return await db.fetchone(
-        """
-        SELECT id, download_url, price_msat, name, producer
-        FROM livestream.tracks WHERE id = :id
-        """,
+        "SELECT * FROM livestream.tracks WHERE id = :id",
         {"id": track_id},
         Track,
     )
 
 
-async def get_tracks(livestream: int) -> list[Track]:
+async def get_tracks(livestream: str) -> list[Track]:
     return await db.fetchall(
-        """
-        SELECT id, download_url, price_msat, name, producer
-        FROM livestream.tracks WHERE livestream = :livestream
-        """,
+        "SELECT * FROM livestream.tracks WHERE livestream = :livestream",
         {"livestream": livestream},
         Track,
     )
 
 
-async def delete_track_from_livestream(livestream: int, track_id: int):
+async def delete_track_from_livestream(livestream: str, track_id: str):
     await db.execute(
         """
         DELETE FROM livestream.tracks WHERE livestream = :livestream AND id = :id
@@ -153,50 +113,42 @@ async def delete_track_from_livestream(livestream: int, track_id: int):
     )
 
 
-async def add_producer(livestream_id: int, name: str) -> int:
+async def create_producer(livestream_id: str, name: str) -> Producer:
     name = name.strip()
-
-    livestream = await db.fetchone(
+    producer = await db.fetchone(
         """
-        SELECT id FROM livestream.producers
+        SELECT * FROM livestream.producers
         WHERE livestream = :livestream AND lower(name) = :name
         """,
         {"livestream": livestream_id, "name": name.lower()},
-        Livestream,
+        Producer,
     )
-    if livestream:
-        return livestream.id
+    if producer:
+        return producer
 
     user = await create_account()
     wallet = await create_wallet(user_id=user.id, wallet_name="livestream: " + name)
 
-    await db.execute(
-        """
-        INSERT INTO livestream.producers (livestream, name, "user", wallet)
-        VALUES (:livestream, :name, :user, :wallet)
-        """,
-        {
-            "livestream": livestream_id,
-            "name": name,
-            "user": user.id,
-            "wallet": wallet.id,
-        },
+    producer = Producer(
+        id=urlsafe_short_hash(),
+        livestream=livestream_id,
+        user=user.id,
+        wallet=wallet.id,
+        name=name,
     )
-    return 1
+    await db.insert("livestream.producers", producer)
+    return producer
 
 
-async def get_producer(producer_id: int) -> Optional[Producer]:
+async def get_producer(producer_id: str) -> Optional[Producer]:
     return await db.fetchone(
-        """
-        SELECT id, "user", wallet, name
-        FROM livestream.producers WHERE id = :id
-        """,
+        "SELECT * FROM livestream.producers WHERE id = :id",
         {"id": producer_id},
         Producer,
     )
 
 
-async def get_producers(livestream: int) -> list[Producer]:
+async def get_producers(livestream: str) -> list[Producer]:
     return await db.fetchall(
         """
         SELECT id, "user", wallet, name

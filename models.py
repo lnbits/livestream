@@ -1,5 +1,4 @@
 import json
-from sqlite3 import Row
 from typing import Optional
 
 from fastapi import Query, Request
@@ -18,30 +17,23 @@ class CreateTrack(BaseModel):
 
 
 class Livestream(BaseModel):
-    id: int
+    id: str
     wallet: str
-    fee_pct: int
-    current_track: Optional[int]
+    fee_pct: int = 10
+    current_track: Optional[str] = None
 
     def lnurl(self, request: Request) -> Lnurl:
         url = str(request.url_for("livestream.lnurl_livestream", ls_id=self.id))
         return lnurl_encode(url)
 
-    @classmethod
-    def from_row(cls, row: Row):
-        return cls(**dict(row))
-
 
 class Track(BaseModel):
-    id: int
-    download_url: Optional[str]
-    price_msat: int = 0
+    id: str
+    livestream: str
+    producer: str
     name: str
-    producer: int
-
-    @classmethod
-    def from_row(cls, row: Row):
-        return cls(**dict(row))
+    download_url: Optional[str] = None
+    price_msat: int = 0
 
     @property
     def min_sendable(self) -> int:
@@ -81,11 +73,8 @@ class Track(BaseModel):
 
 
 class Producer(BaseModel):
-    id: int
+    id: str
+    livestream: str
     user: str
     wallet: str
     name: str
-
-    @classmethod
-    def from_row(cls, row: Row):
-        return cls(**dict(row))

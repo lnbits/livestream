@@ -6,11 +6,13 @@ from lnbits.decorators import require_admin_key, require_invoice_key
 from lnurl.exceptions import InvalidUrl as LnurlInvalidUrl
 
 from .crud import (
-    add_producer,
-    add_track,
+    create_producer,
+    create_track,
     delete_track_from_livestream,
     get_or_create_livestream_by_wallet,
+    get_producer,
     get_producers,
+    get_track,
     get_tracks,
     update_current_track,
     update_livestream_fee,
@@ -26,7 +28,6 @@ async def api_livestream_from_wallet(
     req: Request, key_info: WalletTypeInfo = Depends(require_invoice_key)
 ):
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
-    assert ls
     tracks = await get_tracks(ls.id)
     producers = await get_producers(ls.id)
 
@@ -54,17 +55,13 @@ async def api_livestream_from_wallet(
 
 @livestream_api_router.put("/api/v1/livestream/track/{track_id}")
 async def api_update_track(
-    track_id, key_info: WalletTypeInfo = Depends(require_admin_key)
+    track_id: str, key_info: WalletTypeInfo = Depends(require_admin_key)
 ):
-    try:
-        tid = int(track_id)
-    except ValueError:
-        tid = 0
-
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
-    assert ls
-    await update_current_track(ls.id, None if tid <= 0 else tid)
-    return "", HTTPStatus.NO_CONTENT
+    track = await get_track(track_id)
+    if not track:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+    await update_current_track(ls.id, track.id)
 
 
 @livestream_api_router.put("/api/v1/livestream/fee/{fee_pct}")
@@ -72,48 +69,61 @@ async def api_update_fee(
     fee_pct, key_info: WalletTypeInfo = Depends(require_admin_key)
 ):
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
-    assert ls
     await update_livestream_fee(ls.id, int(fee_pct))
-    return "", HTTPStatus.NO_CONTENT
 
 
-async def check_producer(ls_id, data) -> int:
+async def _check_producer(livestream_id, data: CreateTrack):
     if data.producer_id:
-        p_id = int(data.producer_id)
-    elif data.producer_name:
-        p_id = await add_producer(ls_id, data.producer_name)
+        producer = await get_producer(data.producer_id)
+        if not producer:
+            raise HTTPException(
+                status_code=HTTPStatus.NOT_FOUND,
+                detail=f"Producer with id: {data.producer_id} not found.",
+            )
     else:
-        raise TypeError("need either producer_id or producer_name arguments")
-    return p_id
+        if not data.producer_name:
+            raise HTTPException(
+                status_code=HTTPStatus.BAD_REQUEST, detail="Producer name required."
+            )
+        producer = await create_producer(livestream_id, data.producer_name)
+    return producer
 
 
-@livestream_api_router.post("/api/v1/livestream/tracks")
+@livestream_api_router.post("/api/v1/livestream/track")
 async def api_add_tracks(
     data: CreateTrack, key_info: WalletTypeInfo = Depends(require_admin_key)
 ):
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
-    p_id = await check_producer(ls.id, data)
-    return await add_track(
-        ls.id, data.name, data.download_url, data.price_msat or 0, p_id
-    )
+    producer = await _check_producer(ls.id, data)
+    return await create_track(ls.id, producer.id, data)
 
 
-@livestream_api_router.put("/api/v1/livestream/tracks/{id}")
+@livestream_api_router.put("/api/v1/livestream/track/{track_id}")
 async def api_update_tracks(
-    data: CreateTrack, tid: int, key_info: WalletTypeInfo = Depends(require_admin_key)
+    track_id: str,
+    data: CreateTrack,
+    key_info: WalletTypeInfo = Depends(require_admin_key),
 ):
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
-    p_id = await check_producer(ls.id, data)
-    return await update_track(
-        ls.id, tid, data.name, data.download_url, data.price_msat or 0, p_id
-    )
+    track = await get_track(track_id)
+    if not track:
+        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+    producer = await _check_producer(ls.id, data)
+
+    if data.download_url:
+        track.download_url = data.download_url
+    if data.price_msat:
+        track.price_msat = data.price_msat
+
+    track.name = data.name
+    track.producer = producer.id
+
+    return await update_track(track)
 
 
 @livestream_api_router.delete("/api/v1/livestream/tracks/{track_id}")
 async def api_delete_track(
-    track_id, key_info: WalletTypeInfo = Depends(require_admin_key)
+    track_id: str, key_info: WalletTypeInfo = Depends(require_admin_key)
 ):
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
-    assert ls
     await delete_track_from_livestream(ls.id, track_id)
-    return "", HTTPStatus.NO_CONTENT

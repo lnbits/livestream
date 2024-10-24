@@ -93,8 +93,8 @@ window.app = Vue.createApp({
       let {id, name, producer, price_sat, download_url} = this.trackDialog.data
 
       const [method, path] = id
-        ? ['PUT', `/livestream/api/v1/livestream/tracks/${id}`]
-        : ['POST', '/livestream/api/v1/livestream/tracks']
+        ? ['PUT', `/livestream/api/v1/livestream/track/${id}`]
+        : ['POST', '/livestream/api/v1/livestream/track']
 
       LNbits.api
         .request(method, path, this.selectedWallet.inkey, {

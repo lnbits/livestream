@@ -18,7 +18,7 @@ livestream_lnurl_router = APIRouter()
 
 
 @livestream_lnurl_router.get("/lnurl/{ls_id}", name="livestream.lnurl_livestream")
-async def lnurl_livestream(ls_id, request: Request):
+async def lnurl_livestream(ls_id: str, request: Request):
     ls = await get_livestream(ls_id)
     if not ls:
         raise HTTPException(
@@ -112,7 +112,7 @@ async def lnurl_callback(
 
     extra_amount = amount_received - int(amount_received * (100 - ls.fee_pct) / 100)
 
-    payment_hash, payment_request = await create_invoice(
+    payment = await create_invoice(
         wallet_id=ls.wallet,
         amount=int(amount_received / 1000),
         memo=await track.fullname(),
@@ -130,13 +130,13 @@ async def lnurl_callback(
         success_action = None
     else:
         url = request.url_for("livestream.track_download", track_id=track.id)
-        url_with_query = f"{url}?p={payment_hash}"
+        url_with_query = f"{url}?p={payment.payment_hash}"
         success_action = parse_obj_as(
             Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
             url_with_query,
         )
 
-    invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment_request))
+    invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment.bolt11))
     resp = LnurlPayActionResponse(pr=invoice, successAction=success_action, routes=[])
 
     return resp.dict()
