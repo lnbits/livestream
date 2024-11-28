@@ -32,10 +32,10 @@ window.app = Vue.createApp({
     }
   },
   watch: {
-      selectedWallet() {
-          this.loadLivestream()
-          this.startPaymentNotifier()
-      }
+    selectedWallet() {
+      this.loadLivestream()
+      this.startPaymentNotifier()
+    }
   },
   methods: {
     getTrackLabel(trackId) {
@@ -187,7 +187,8 @@ window.app = Vue.createApp({
       LNbits.api
         .request(
           'PUT',
-          '/livestream/api/v1/livestream/fee/' + this.livestream.livestream.fee_pct,
+          '/livestream/api/v1/livestream/fee/' +
+            this.livestream.livestream.fee_pct,
           this.selectedWallet.adminkey
         )
         .then(() => {

@@ -3,7 +3,6 @@ from http import HTTPStatus
 from fastapi import APIRouter, Depends, HTTPException, Request
 from lnbits.core.models import WalletTypeInfo
 from lnbits.decorators import require_admin_key, require_invoice_key
-from lnurl.exceptions import InvalidUrl as LnurlInvalidUrl
 
 from .crud import (
     create_producer,
@@ -34,7 +33,7 @@ async def api_livestream_from_wallet(
         lnurl=str(ls.lnurl(request=req)),
         livestream=ls,
         tracks=tracks,
-        producers=producers
+        producers=producers,
     )
     return overview
 
