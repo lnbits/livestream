@@ -1,8 +1,4 @@
-/* globals Quasar, Vue, _, VueQrcode, windowMixin, LNbits, LOCALE */
-
-Vue.component(VueQrcode.name, VueQrcode)
-
-new Vue({
+window.app = Vue.createApp({
   el: '#vue',
   mixins: [windowMixin],
   data() {
@@ -35,6 +31,12 @@ new Vue({
       )
     }
   },
+  watch: {
+    selectedWallet() {
+      this.loadLivestream()
+      this.startPaymentNotifier()
+    }
+  },
   methods: {
     getTrackLabel(trackId) {
       if (!trackId) return
@@ -49,11 +51,6 @@ new Vue({
         this.trackDialog.data.producer.length === 0
       )
     },
-    changedWallet(wallet) {
-      this.selectedWallet = wallet
-      this.loadLivestream()
-      this.startPaymentNotifier()
-    },
     loadLivestream() {
       LNbits.api
         .request(
@@ -63,7 +60,7 @@ new Vue({
         )
         .then(response => {
           this.livestream = response.data
-          this.nextCurrentTrack = this.livestream.current_track
+          this.nextCurrentTrack = this.livestream.livestream.current_track
         })
         .catch(err => {
           LNbits.utils.notifyApiError(err)
@@ -80,7 +77,7 @@ new Vue({
             this.tracksMap[payment.extra.track] || {name: '[unknown]'}
           ).name
 
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Someone paid <b>${satoshiAmount} sat</b> for the track <em>${trackName}</em>.`,
             caption: payment.extra.comment
               ? `<em>"${payment.extra.comment}"</em>`
@@ -97,11 +94,11 @@ new Vue({
       let {id, name, producer, price_sat, download_url} = this.trackDialog.data
 
       const [method, path] = id
-        ? ['PUT', `/livestream/api/v1/livestream/tracks/${id}`]
-        : ['POST', '/livestream/api/v1/livestream/tracks']
+        ? ['PUT', `/livestream/api/v1/livestream/track/${id}`]
+        : ['POST', '/livestream/api/v1/livestream/track']
 
       LNbits.api
-        .request(method, path, this.selectedWallet.inkey, {
+        .request(method, path, this.selectedWallet.adminkey, {
           download_url:
             download_url && download_url.length > 0 ? download_url : undefined,
           name,
@@ -110,7 +107,7 @@ new Vue({
           producer_id: typeof producer === 'object' ? producer.id : undefined
         })
         .then(response => {
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Track '${this.trackDialog.data.name}' added.`,
             timeout: 700
           })
@@ -145,10 +142,10 @@ new Vue({
             .request(
               'DELETE',
               '/livestream/api/v1/livestream/tracks/' + trackId,
-              this.selectedWallet.inkey
+              this.selectedWallet.adminkey
             )
             .then(response => {
-              this.$q.notify({
+              Quasar.Notify.create({
                 message: `Track deleted`,
                 timeout: 700
               })
@@ -163,8 +160,7 @@ new Vue({
         })
     },
     updateCurrentTrack(track) {
-      console.log(this.nextCurrentTrack, this.livestream)
-      if (this.livestream.current_track === track) {
+      if (this.livestream.livestream.current_track === track) {
         // if clicking the same, stop it
         track = 0
       }
@@ -173,12 +169,12 @@ new Vue({
         .request(
           'PUT',
           '/livestream/api/v1/livestream/track/' + track,
-          this.selectedWallet.inkey
+          this.selectedWallet.adminkey
         )
         .then(() => {
-          this.livestream.current_track = track
+          this.livestream.livestream.current_track = track
           this.nextCurrentTrack = track
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Current track updated.`,
             timeout: 700
           })
@@ -191,11 +187,12 @@ new Vue({
       LNbits.api
         .request(
           'PUT',
-          '/livestream/api/v1/livestream/fee/' + this.livestream.fee_pct,
-          this.selectedWallet.inkey
+          '/livestream/api/v1/livestream/fee/' +
+            this.livestream.livestream.fee_pct,
+          this.selectedWallet.adminkey
         )
         .then(() => {
-          this.$q.notify({
+          Quasar.Notify.create({
             message: `Percentage updated.`,
             timeout: 700
           })
@@ -210,7 +207,5 @@ new Vue({
   },
   created() {
     this.selectedWallet = this.g.user.wallets[0]
-    this.loadLivestream()
-    this.startPaymentNotifier()
   }
 })

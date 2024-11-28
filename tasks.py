@@ -2,7 +2,6 @@ import asyncio
 
 from lnbits.core.models import Payment
 from lnbits.core.services import create_invoice, pay_invoice
-from lnbits.helpers import get_current_extension_name
 from lnbits.tasks import register_invoice_listener
 from loguru import logger
 
@@ -11,7 +10,7 @@ from .crud import get_livestream_by_track, get_producer, get_track
 
 async def wait_for_paid_invoices():
     invoice_queue = asyncio.Queue()
-    register_invoice_listener(invoice_queue, get_current_extension_name())
+    register_invoice_listener(invoice_queue, "ext_livestream")
 
     while True:
         payment = await invoice_queue.get()
@@ -20,7 +19,7 @@ async def wait_for_paid_invoices():
 
 async def on_invoice_paid(payment: Payment) -> None:
 
-    if payment.extra.get("tag") != "livestream":
+    if not payment.extra or payment.extra.get("tag") != "livestream":
         # not a livestream invoice
         return
 
@@ -41,18 +40,18 @@ async def on_invoice_paid(payment: Payment) -> None:
 
     amount = int(payment.amount * (100 - ls.fee_pct) / 100)
 
-    payment_hash, payment_request = await create_invoice(
+    payment = await create_invoice(
         wallet_id=producer.wallet,
         amount=int(amount / 1000),
         internal=True,
         memo=f"Revenue from '{track.name}'.",
     )
     logger.debug(
-        f"livestream: producer invoice created: {payment_hash}, {amount} msats"
+        f"livestream: producer invoice created: {payment.payment_hash}, {amount} msats"
     )
 
-    checking_id = await pay_invoice(
-        payment_request=payment_request,
+    payment = await pay_invoice(
+        payment_request=payment.bolt11,
         wallet_id=payment.wallet_id,
         extra={
             **payment.extra,
@@ -60,7 +59,7 @@ async def on_invoice_paid(payment: Payment) -> None:
             "received": payment.amount,
         },
     )
-    logger.debug(f"livestream: producer invoice paid: {checking_id}")
+    logger.debug(f"livestream: producer invoice paid: {payment.checking_id}")
 
     # so the flow is the following:
     # - we receive, say, 1000 satoshis
