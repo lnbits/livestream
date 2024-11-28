@@ -1,4 +1,7 @@
-async def m001_initial(db):
+from lnbits.db import Connection
+
+
+async def m001_initial(db: Connection):
     """
     Initial livestream tables.
     """
