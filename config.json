@@ -1,8 +1,16 @@
 {
+  "id": "livestream",
   "name": "DJ Livestream",
   "short_description": "Sell tracks and split revenue (lnurl-pay)",
   "tile": "/livestream/static/image/livestream.png",
-  "contributors": ["fiatjaf", "cryptograffiti"],
+  "contributors": [
+    "fiatjaf",
+    "cryptograffiti"
+  ],
   "min_lnbits_version": "1.0.0",
-  "hidden": false
+  "hidden": false,
+  "images": [],
+  "description_md": "https://raw.githubusercontent.com/lnbits/livestream/main/description.md",
+  "terms_and_conditions_md": "https://raw.githubusercontent.com/lnbits/livestream/main/toc.md",
+  "license": "MIT"
 }
