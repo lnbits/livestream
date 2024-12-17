@@ -3,10 +3,7 @@
   "name": "DJ Livestream",
   "short_description": "Sell tracks and split revenue (lnurl-pay)",
   "tile": "/livestream/static/image/livestream.png",
-  "contributors": [
-    "fiatjaf",
-    "cryptograffiti"
-  ],
+  "contributors": ["fiatjaf", "cryptograffiti"],
   "min_lnbits_version": "1.0.0",
   "hidden": false,
   "images": [],
