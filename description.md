@@ -1,0 +1,1 @@
+LNbits Livestream extension produces a static QR code that can be shown on screen while livestreaming a DJ set for example. If someone listening to the livestream likes a song and want to support the DJ and/or the producer he can scan the QR code with a LNURL-pay capable wallet.
