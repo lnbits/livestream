@@ -40,3 +40,13 @@ async def m001_initial(db: Connection):
         );
         """
     )
+
+
+async def m002_fix_current_track(db: Connection):
+    """
+    Fix current_track column.
+    """
+    await db.execute("ALTER TABLE livestream.livestreams DROP COLUMN current_track;")
+    await db.execute(
+        "ALTER TABLE livestream.livestreams ADD COLUMN current_track TEXT;"
+    )
