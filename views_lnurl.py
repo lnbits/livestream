@@ -1,15 +1,17 @@
 import math
 from http import HTTPStatus
-from typing import Union
 
 from fastapi import APIRouter, HTTPException, Query, Request
 from lnbits.core.services import create_invoice
 from lnurl import (
+    CallbackUrl,
+    LightningInvoice,
     LnurlErrorResponse,
     LnurlPayActionResponse,
     LnurlPayResponse,
+    MessageAction,
+    MilliSatoshi,
 )
-from lnurl.types import ClearnetUrl, DebugUrl, LightningInvoice, MilliSatoshi, OnionUrl
 from pydantic import parse_obj_as
 
 from .crud import get_livestream, get_livestream_by_track, get_track
@@ -18,7 +20,7 @@ livestream_lnurl_router = APIRouter()
 
 
 @livestream_lnurl_router.get("/lnurl/{ls_id}", name="livestream.lnurl_livestream")
-async def lnurl_livestream(ls_id: str, request: Request):
+async def lnurl_livestream(ls_id: str, request: Request) -> LnurlPayResponse:
     ls = await get_livestream(ls_id)
     if not ls:
         raise HTTPException(
@@ -34,50 +36,43 @@ async def lnurl_livestream(ls_id: str, request: Request):
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
 
     url = parse_obj_as(
-        Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
+        CallbackUrl,
         request.url_for("livestream.lnurl_track", track_id=track.id),
     )
 
-    resp = LnurlPayResponse(
+    return LnurlPayResponse(
         callback=url,
         minSendable=MilliSatoshi(track.min_sendable),
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
+        commentAllowed=300,
     )
-
-    params = resp.dict()
-    params["commentAllowed"] = 300
-
-    return params
 
 
 @livestream_lnurl_router.get("/lnurl/t/{track_id}", name="livestream.lnurl_track")
-async def lnurl_track(track_id, request: Request):
+async def lnurl_track(track_id, request: Request) -> LnurlPayResponse:
     track = await get_track(track_id)
     if not track:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
 
     url = parse_obj_as(
-        Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
-        request.url_for("livestream.lnurl_track", track_id=track.id),
+        CallbackUrl,
+        str(request.url_for("livestream.lnurl_track", track_id=track.id)),
     )
-    resp = LnurlPayResponse(
+    return LnurlPayResponse(
         callback=url,
         minSendable=MilliSatoshi(track.min_sendable),
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
+        commentAllowed=300,
     )
-
-    params = resp.dict()
-    params["commentAllowed"] = 300
-
-    return params
 
 
 @livestream_lnurl_router.get("/lnurl/cb/{track_id}", name="livestream.lnurl_callback")
 async def lnurl_callback(
     track_id, request: Request, amount: int = Query(...), comment: str = Query("")
-):
+) -> LnurlPayActionResponse | LnurlErrorResponse:
+
     track = await get_track(track_id)
     if not track:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
@@ -90,22 +85,21 @@ async def lnurl_callback(
             Amount {round(amount_received / 1000)} is smaller than
             minimum {math.floor(track.min_sendable)}.
             """
-        ).dict()
+        )
     elif track.max_sendable < amount_received:
         return LnurlErrorResponse(
             reason=f"""
             Amount {round(amount_received / 1000)} is greater than
             maximum {math.floor(track.max_sendable)}.
             """
-        ).dict()
-
+        )
     if len(comment or "") > 300:
         return LnurlErrorResponse(
             reason=f"""
             Got a comment with {len(comment)} characters,
             but can only accept 300
             """
-        ).dict()
+        )
 
     ls = await get_livestream_by_track(track_id)
     assert ls
@@ -125,18 +119,17 @@ async def lnurl_callback(
         },
     )
 
+    invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment.bolt11))
     assert track.price_msat
     if amount_received < track.price_msat:
-        success_action = None
-    else:
-        url = request.url_for("livestream.track_download", track_id=track.id)
-        url_with_query = f"{url}?p={payment.payment_hash}"
-        success_action = parse_obj_as(
-            Union[DebugUrl, OnionUrl, ClearnetUrl],  # type: ignore
-            url_with_query,
-        )
+        return LnurlPayActionResponse(pr=invoice)
 
-    invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment.bolt11))
-    resp = LnurlPayActionResponse(pr=invoice, successAction=success_action, routes=[])
+    url = request.url_for("livestream.track_download", track_id=track.id)
+    url_with_query = f"{url}?p={payment.payment_hash}"
+    success_action_url = parse_obj_as(CallbackUrl, url_with_query)
+    action = MessageAction(
+        text=f"Download {track.name}",
+        url=success_action_url,
+    )
+    return LnurlPayActionResponse(pr=invoice, successAction=action)
 
-    return resp.dict()
