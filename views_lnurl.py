@@ -9,8 +9,10 @@ from lnurl import (
     LnurlErrorResponse,
     LnurlPayActionResponse,
     LnurlPayResponse,
-    MessageAction,
+    LnurlPaySuccessActionTag,
+    Max144Str,
     MilliSatoshi,
+    UrlAction,
 )
 from pydantic import parse_obj_as
 
@@ -46,6 +48,10 @@ async def lnurl_livestream(ls_id: str, request: Request) -> LnurlPayResponse:
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
         commentAllowed=300,
+        # TODO remove after lib update
+        payerData=None,
+        allowsNostr=None,
+        nostrPubkey=None,
     )
 
 
@@ -65,6 +71,10 @@ async def lnurl_track(track_id, request: Request) -> LnurlPayResponse:
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
         commentAllowed=300,
+        # TODO remove after lib update
+        payerData=None,
+        allowsNostr=None,
+        nostrPubkey=None,
     )
 
 
@@ -127,9 +137,11 @@ async def lnurl_callback(
     url = request.url_for("livestream.track_download", track_id=track.id)
     url_with_query = f"{url}?p={payment.payment_hash}"
     success_action_url = parse_obj_as(CallbackUrl, url_with_query)
-    action = MessageAction(
-        text=f"Download {track.name}",
+    message = parse_obj_as(Max144Str, f"Download {track.name}")
+    action = UrlAction(
+        # TODO remove after lib update
+        tag=LnurlPaySuccessActionTag.url,
+        description=message,
         url=success_action_url,
     )
     return LnurlPayActionResponse(pr=invoice, successAction=action)
-
