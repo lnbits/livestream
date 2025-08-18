@@ -9,7 +9,6 @@ from lnurl import (
     LnurlErrorResponse,
     LnurlPayActionResponse,
     LnurlPayResponse,
-    LnurlPaySuccessActionTag,
     Max144Str,
     MilliSatoshi,
     UrlAction,
@@ -48,10 +47,6 @@ async def lnurl_livestream(ls_id: str, request: Request) -> LnurlPayResponse:
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
         commentAllowed=300,
-        # TODO remove after lib update
-        payerData=None,
-        allowsNostr=None,
-        nostrPubkey=None,
     )
 
 
@@ -71,10 +66,6 @@ async def lnurl_track(track_id, request: Request) -> LnurlPayResponse:
         maxSendable=MilliSatoshi(track.max_sendable),
         metadata=await track.lnurlpay_metadata(),
         commentAllowed=300,
-        # TODO remove after lib update
-        payerData=None,
-        allowsNostr=None,
-        nostrPubkey=None,
     )
 
 
@@ -139,8 +130,6 @@ async def lnurl_callback(
     success_action_url = parse_obj_as(CallbackUrl, url_with_query)
     message = parse_obj_as(Max144Str, f"Download {track.name}")
     action = UrlAction(
-        # TODO remove after lib update
-        tag=LnurlPaySuccessActionTag.url,
         description=message,
         url=success_action_url,
     )
