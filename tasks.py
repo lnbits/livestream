@@ -1,10 +1,9 @@
 import asyncio
 
-from loguru import logger
-
 from lnbits.core.models import Payment
 from lnbits.core.services import create_invoice, pay_invoice
 from lnbits.tasks import register_invoice_listener
+from loguru import logger
 
 from .crud import get_livestream_by_track, get_producer, get_track
 
@@ -47,7 +46,8 @@ async def on_invoice_paid(payment: Payment) -> None:
         memo=f"Revenue from '{track.name}'.",
     )
     logger.debug(
-        f"livestream: producer invoice created: {producer_invoice.payment_hash}, {amount} msats"
+        "livestream: producer invoice created: "
+        f"{producer_invoice.payment_hash}, {amount} msats"
     )
 
     payment_to_producer = await pay_invoice(

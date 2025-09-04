@@ -1,6 +1,7 @@
 import math
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Request
+from lnbits.core.services import create_invoice
 from lnurl import (
     CallbackUrl,
     LightningInvoice,
@@ -12,8 +13,6 @@ from lnurl import (
     UrlAction,
 )
 from pydantic import parse_obj_as
-
-from lnbits.core.services import create_invoice
 
 from .crud import get_livestream, get_livestream_by_track, get_track
 
