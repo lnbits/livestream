@@ -1,5 +1,4 @@
 import json
-from typing import Optional
 
 from fastapi import Query, Request
 from lnurl import Lnurl
@@ -20,7 +19,7 @@ class Livestream(BaseModel):
     id: str
     wallet: str
     fee_pct: int = 10
-    current_track: Optional[str] = None
+    current_track: str | None = None
 
     def lnurl(self, request: Request) -> Lnurl:
         url = str(request.url_for("livestream.lnurl_livestream", ls_id=self.id))
@@ -32,7 +31,7 @@ class Track(BaseModel):
     livestream: str
     producer: str
     name: str
-    download_url: Optional[str] = None
+    download_url: str | None = None
     price_msat: int = 0
 
     @property
