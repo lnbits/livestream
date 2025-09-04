@@ -27,7 +27,7 @@
           <div class="col">
             <q-btn unelevated color="primary" type="submit">
               <span
-                v-text="nextCurrentTrack === livestream.current_track ? 'Stop' : 'Set'"
+                v-text="nextCurrentTrack === livestream.livestream.current_track ? 'Stop' : 'Set'"
               ></span>
               current track
             </q-btn>
@@ -89,8 +89,8 @@
                   unelevated
                   dense
                   size="xs"
-                  :icon="livestream.current_track !== props.row.id ? 'play_circle_outline' : 'play_arrow'"
-                  :color="livestream.current_track !== props.row.id ? ($q.dark.isActive ? 'grey-7' : 'grey-5') : 'green'"
+                  :icon="livestream.livestream.current_track !== props.row.id ? 'play_circle_outline' : 'play_arrow'"
+                  :color="livestream.livestream.current_track !== props.row.id ? ($q.dark.isActive ? 'grey-7' : 'grey-5') : 'green'"
                   type="a"
                   @click="updateCurrentTrack(props.row.id)"
                   target="_blank"
