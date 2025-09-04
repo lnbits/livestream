@@ -4,6 +4,8 @@ window.app = Vue.createApp({
   data() {
     return {
       cancelListener: () => {},
+      activeTrackUrl: '',
+      activeLivestreamUrl: '',
       selectedWallet: null,
       nextCurrentTrack: null,
       livestream: {
@@ -60,11 +62,17 @@ window.app = Vue.createApp({
         )
         .then(response => {
           this.livestream = response.data
+          this.activeLivestreamUrl =
+            window.location.origin +
+            '/livestream/lnurl/' +
+            this.livestream.livestream.id
           this.nextCurrentTrack = this.livestream.livestream.current_track
+          this.activeTrackUrl =
+            window.location.origin +
+            '/livestream/lnurl/t/' +
+            this.livestream.livestream.current_track
         })
-        .catch(err => {
-          LNbits.utils.notifyApiError(err)
-        })
+        .catch(LNbits.utils.notifyApiError)
     },
     startPaymentNotifier() {
       this.cancelListener()

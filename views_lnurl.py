@@ -1,7 +1,6 @@
 import math
-from http import HTTPStatus
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Query, Request
 from lnbits.core.services import create_invoice
 from lnurl import (
     CallbackUrl,
@@ -21,20 +20,18 @@ livestream_lnurl_router = APIRouter()
 
 
 @livestream_lnurl_router.get("/lnurl/{ls_id}", name="livestream.lnurl_livestream")
-async def lnurl_livestream(ls_id: str, request: Request) -> LnurlPayResponse:
+async def lnurl_livestream(
+    ls_id: str, request: Request
+) -> LnurlPayResponse | LnurlErrorResponse:
     ls = await get_livestream(ls_id)
     if not ls:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Livestream not found."
-        )
+        return LnurlErrorResponse(reason="Livestream not found.")
 
     if not ls.current_track:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="This livestream is offline."
-        )
+        return LnurlErrorResponse(reason="This livestream is offline.")
     track = await get_track(ls.current_track)
     if not track:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+        return LnurlErrorResponse(reason="Track not found.")
 
     url = parse_obj_as(
         CallbackUrl,
@@ -51,10 +48,12 @@ async def lnurl_livestream(ls_id: str, request: Request) -> LnurlPayResponse:
 
 
 @livestream_lnurl_router.get("/lnurl/t/{track_id}", name="livestream.lnurl_track")
-async def lnurl_track(track_id, request: Request) -> LnurlPayResponse:
+async def lnurl_track(
+    track_id, request: Request
+) -> LnurlPayResponse | LnurlErrorResponse:
     track = await get_track(track_id)
     if not track:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+        return LnurlErrorResponse(reason="Track not found.")
 
     url = parse_obj_as(
         CallbackUrl,
@@ -76,7 +75,7 @@ async def lnurl_callback(
 
     track = await get_track(track_id)
     if not track:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+        return LnurlErrorResponse(reason="Track not found.")
 
     amount_received = int(amount or 0)
 
