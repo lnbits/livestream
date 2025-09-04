@@ -1,9 +1,7 @@
 import json
 
-from fastapi import Query, Request
-from lnurl import Lnurl
-from lnurl import encode as lnurl_encode
-from lnurl.types import LnurlPayMetadata
+from fastapi import Query
+from lnurl import LnurlPayMetadata
 from pydantic import BaseModel
 
 
@@ -21,10 +19,6 @@ class Livestream(BaseModel):
     fee_pct: int = 10
     current_track: str | None = None
 
-    def lnurl(self, request: Request) -> Lnurl:
-        url = str(request.url_for("livestream.lnurl_livestream", ls_id=self.id))
-        return lnurl_encode(url)
-
 
 class Track(BaseModel):
     id: str
@@ -41,10 +35,6 @@ class Track(BaseModel):
     @property
     def max_sendable(self) -> int:
         return max(50_000_000, self.price_msat * 5)
-
-    def lnurl(self, request: Request) -> Lnurl:
-        url = str(request.url_for("livestream.lnurl_track", track_id=self.id))
-        return lnurl_encode(url)
 
     async def fullname(self) -> str:
         from .crud import get_producer
@@ -80,7 +70,6 @@ class Producer(BaseModel):
 
 
 class LivestreamOverview(BaseModel):
-    lnurl: str
     livestream: Livestream
     tracks: list[Track]
     producers: list[Producer]
