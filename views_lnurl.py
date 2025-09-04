@@ -1,7 +1,6 @@
 import math
 
 from fastapi import APIRouter, Query, Request
-from lnbits.core.services import create_invoice
 from lnurl import (
     CallbackUrl,
     LightningInvoice,
@@ -13,6 +12,8 @@ from lnurl import (
     UrlAction,
 )
 from pydantic import parse_obj_as
+
+from lnbits.core.services import create_invoice
 
 from .crud import get_livestream, get_livestream_by_track, get_track
 
@@ -35,7 +36,7 @@ async def lnurl_livestream(
 
     url = parse_obj_as(
         CallbackUrl,
-        request.url_for("livestream.lnurl_track", track_id=track.id),
+        str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
     )
 
     return LnurlPayResponse(
@@ -57,7 +58,7 @@ async def lnurl_track(
 
     url = parse_obj_as(
         CallbackUrl,
-        str(request.url_for("livestream.lnurl_track", track_id=track.id)),
+        str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
     )
     return LnurlPayResponse(
         callback=url,
@@ -70,9 +71,8 @@ async def lnurl_track(
 
 @livestream_lnurl_router.get("/lnurl/cb/{track_id}", name="livestream.lnurl_callback")
 async def lnurl_callback(
-    track_id, request: Request, amount: int = Query(...), comment: str = Query("")
+    request: Request, track_id: str, amount: int, comment: str | None = None
 ) -> LnurlPayActionResponse | LnurlErrorResponse:
-
     track = await get_track(track_id)
     if not track:
         return LnurlErrorResponse(reason="Track not found.")
@@ -93,7 +93,7 @@ async def lnurl_callback(
             maximum {math.floor(track.max_sendable)}.
             """
         )
-    if len(comment or "") > 300:
+    if comment and len(comment or "") > 300:
         return LnurlErrorResponse(
             reason=f"""
             Got a comment with {len(comment)} characters,
@@ -121,10 +121,10 @@ async def lnurl_callback(
 
     invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment.bolt11))
     assert track.price_msat
-    if amount_received < track.price_msat:
+    if not track.download_url or amount_received < track.price_msat:
         return LnurlPayActionResponse(pr=invoice)
 
-    url = request.url_for("livestream.track_download", track_id=track.id)
+    url = request.url_for("livestream.track_redirect_download", track_id=track.id)
     url_with_query = f"{url}?p={payment.payment_hash}"
     success_action_url = parse_obj_as(CallbackUrl, url_with_query)
     message = parse_obj_as(Max144Str, f"Download {track.name}")
