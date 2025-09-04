@@ -1,5 +1,3 @@
-from typing import Optional
-
 from lnbits.core.crud import create_account, create_wallet
 from lnbits.db import Database
 from lnbits.helpers import urlsafe_short_hash
@@ -18,7 +16,7 @@ async def create_livestream(wallet_id: str) -> Livestream:
     return livestream
 
 
-async def get_livestream(ls_id: str) -> Optional[Livestream]:
+async def get_livestream(ls_id: str) -> Livestream | None:
     return await db.fetchone(
         "SELECT * FROM livestream.livestreams WHERE id = :id",
         {"id": ls_id},
@@ -26,7 +24,7 @@ async def get_livestream(ls_id: str) -> Optional[Livestream]:
     )
 
 
-async def get_livestream_by_track(track_id: str) -> Optional[Livestream]:
+async def get_livestream_by_track(track_id: str) -> Livestream | None:
     return await db.fetchone(
         """
         SELECT a.* FROM livestream.tracks as b
@@ -52,7 +50,7 @@ async def get_or_create_livestream_by_wallet(wallet: str) -> Livestream:
     return ls
 
 
-async def update_current_track(ls_id: str, track_id: Optional[str]):
+async def update_current_track(ls_id: str, track_id: str | None):
     await db.execute(
         "UPDATE livestream.livestreams SET current_track = :track_id WHERE id = :id",
         {"track_id": track_id, "id": ls_id},
@@ -88,7 +86,7 @@ async def update_track(track: Track) -> Track:
     return track
 
 
-async def get_track(track_id: str) -> Optional[Track]:
+async def get_track(track_id: str) -> Track | None:
     return await db.fetchone(
         "SELECT * FROM livestream.tracks WHERE id = :id",
         {"id": track_id},
@@ -140,7 +138,7 @@ async def create_producer(livestream_id: str, name: str) -> Producer:
     return producer
 
 
-async def get_producer(producer_id: str) -> Optional[Producer]:
+async def get_producer(producer_id: str) -> Producer | None:
     return await db.fetchone(
         "SELECT * FROM livestream.producers WHERE id = :id",
         {"id": producer_id},
