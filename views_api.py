@@ -1,6 +1,7 @@
 from http import HTTPStatus
 
 from fastapi import APIRouter, Depends, HTTPException
+
 from lnbits.core.models import WalletTypeInfo
 from lnbits.decorators import require_admin_key, require_invoice_key
 
@@ -42,6 +43,8 @@ async def api_update_track(
     track_id: str, key_info: WalletTypeInfo = Depends(require_admin_key)
 ):
     ls = await get_or_create_livestream_by_wallet(key_info.wallet.id)
+    if track_id == "0":
+        return await update_current_track(ls.id, None)
     track = await get_track(track_id)
     if not track:
         raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
