@@ -27,7 +27,7 @@
           <div class="col">
             <q-btn unelevated color="primary" type="submit">
               <span
-                v-text="nextCurrentTrack === livestream.current_track ? 'Stop' : 'Set'"
+                v-text="nextCurrentTrack === livestream.livestream.current_track ? 'Stop' : 'Set'"
               ></span>
               current track
             </q-btn>
@@ -89,8 +89,8 @@
                   unelevated
                   dense
                   size="xs"
-                  :icon="livestream.current_track !== props.row.id ? 'play_circle_outline' : 'play_arrow'"
-                  :color="livestream.current_track !== props.row.id ? ($q.dark.isActive ? 'grey-7' : 'grey-5') : 'green'"
+                  :icon="livestream.livestream.current_track !== props.row.id ? 'play_circle_outline' : 'play_arrow'"
+                  :color="livestream.livestream.current_track !== props.row.id ? ($q.dark.isActive ? 'grey-7' : 'grey-5') : 'green'"
                   type="a"
                   @click="updateCurrentTrack(props.row.id)"
                   target="_blank"
@@ -186,21 +186,7 @@
           >
           </q-select>
         </q-form>
-
-        <a class="text-secondary" :href="'lightning:' + livestream.lnurl">
-          <lnbits-qrcode
-            :value="livestream.lnurl"
-            class="rounded-borders"
-          ></lnbits-qrcode>
-        </a>
-
-        <q-btn
-          outline
-          color="grey"
-          @click="copyText(livestream.lnurl)"
-          class="text-center q-mb-md"
-          >Copy LNURL-pay code</q-btn
-        >
+        <lnbits-qrcode-lnurl :url="activeLivestreamUrl"></lnbits-qrcode-lnurl>
       </q-card-section>
     </q-card>
   </div>
@@ -208,9 +194,7 @@
   <div class="col-12 col-md-5 q-gutter-y-md">
     <q-card>
       <q-card-section>
-        <h6 class="text-subtitle1 q-my-none">
-          {{SITE_TITLE}} Livestream extension
-        </h6>
+        <h6 class="text-subtitle1 q-my-none">Livestream extension</h6>
       </q-card-section>
       <q-card-section class="q-pa-none">
         <q-separator></q-separator>
@@ -228,20 +212,7 @@
         <p class="text-subtitle1 q-my-none">
           Standalone QR Code for this track
         </p>
-        <a class="text-secondary" :href="'lightning:' + trackDialog.data.lnurl">
-          <lnbits-qrcode
-            :value="'lightning:' + trackDialog.data.lnurl.toUpperCase()"
-            class="rounded-borders"
-          ></lnbits-qrcode>
-        </a>
-
-        <q-btn
-          outline
-          color="grey"
-          @click="copyText(trackDialog.data.lnurl)"
-          class="text-center q-mb-md"
-          >Copy LNURL-pay code</q-btn
-        >
+        <lnbits-qrcode-lnurl :url="activeTrackUrl"></lnbits-qrcode-lnurl>
       </q-card-section>
       <q-card-section>
         <q-form @submit="addTrack" class="q-gutter-md">

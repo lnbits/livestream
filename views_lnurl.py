@@ -1,7 +1,6 @@
 import math
-from http import HTTPStatus
 
-from fastapi import APIRouter, HTTPException, Query, Request
+from fastapi import APIRouter, Request
 from lnbits.core.services import create_invoice
 from lnurl import (
     CallbackUrl,
@@ -21,24 +20,22 @@ livestream_lnurl_router = APIRouter()
 
 
 @livestream_lnurl_router.get("/lnurl/{ls_id}", name="livestream.lnurl_livestream")
-async def lnurl_livestream(ls_id: str, request: Request) -> LnurlPayResponse:
+async def lnurl_livestream(
+    ls_id: str, request: Request
+) -> LnurlPayResponse | LnurlErrorResponse:
     ls = await get_livestream(ls_id)
     if not ls:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="Livestream not found."
-        )
+        return LnurlErrorResponse(reason="Livestream not found.")
 
     if not ls.current_track:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND, detail="This livestream is offline."
-        )
+        return LnurlErrorResponse(reason="This livestream is offline.")
     track = await get_track(ls.current_track)
     if not track:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+        return LnurlErrorResponse(reason="Track not found.")
 
     url = parse_obj_as(
         CallbackUrl,
-        request.url_for("livestream.lnurl_track", track_id=track.id),
+        str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
     )
 
     return LnurlPayResponse(
@@ -51,14 +48,16 @@ async def lnurl_livestream(ls_id: str, request: Request) -> LnurlPayResponse:
 
 
 @livestream_lnurl_router.get("/lnurl/t/{track_id}", name="livestream.lnurl_track")
-async def lnurl_track(track_id, request: Request) -> LnurlPayResponse:
+async def lnurl_track(
+    track_id, request: Request
+) -> LnurlPayResponse | LnurlErrorResponse:
     track = await get_track(track_id)
     if not track:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+        return LnurlErrorResponse(reason="Track not found.")
 
     url = parse_obj_as(
         CallbackUrl,
-        str(request.url_for("livestream.lnurl_track", track_id=track.id)),
+        str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
     )
     return LnurlPayResponse(
         callback=url,
@@ -71,12 +70,11 @@ async def lnurl_track(track_id, request: Request) -> LnurlPayResponse:
 
 @livestream_lnurl_router.get("/lnurl/cb/{track_id}", name="livestream.lnurl_callback")
 async def lnurl_callback(
-    track_id, request: Request, amount: int = Query(...), comment: str = Query("")
+    request: Request, track_id: str, amount: int, comment: str | None = None
 ) -> LnurlPayActionResponse | LnurlErrorResponse:
-
     track = await get_track(track_id)
     if not track:
-        raise HTTPException(status_code=HTTPStatus.NOT_FOUND, detail="Track not found.")
+        return LnurlErrorResponse(reason="Track not found.")
 
     amount_received = int(amount or 0)
 
@@ -94,7 +92,7 @@ async def lnurl_callback(
             maximum {math.floor(track.max_sendable)}.
             """
         )
-    if len(comment or "") > 300:
+    if comment and len(comment or "") > 300:
         return LnurlErrorResponse(
             reason=f"""
             Got a comment with {len(comment)} characters,
@@ -122,10 +120,10 @@ async def lnurl_callback(
 
     invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment.bolt11))
     assert track.price_msat
-    if amount_received < track.price_msat:
+    if not track.download_url or amount_received < track.price_msat:
         return LnurlPayActionResponse(pr=invoice)
 
-    url = request.url_for("livestream.track_download", track_id=track.id)
+    url = request.url_for("livestream.track_redirect_download", track_id=track.id)
     url_with_query = f"{url}?p={payment.payment_hash}"
     success_action_url = parse_obj_as(CallbackUrl, url_with_query)
     message = parse_obj_as(Max144Str, f"Download {track.name}")

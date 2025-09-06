@@ -4,9 +4,16 @@ window.app = Vue.createApp({
   data() {
     return {
       cancelListener: () => {},
+      activeTrackUrl: '',
+      activeLivestreamUrl: '',
       selectedWallet: null,
       nextCurrentTrack: null,
       livestream: {
+        livestream: {
+          id: null,
+          current_track: null,
+          fee_pct: null
+        },
         tracks: [],
         producers: []
       },
@@ -60,18 +67,34 @@ window.app = Vue.createApp({
         )
         .then(response => {
           this.livestream = response.data
+          this.activeLivestreamUrl =
+            window.location.origin +
+            '/livestream/lnurl/' +
+            this.livestream.livestream.id
           this.nextCurrentTrack = this.livestream.livestream.current_track
+          this.activeTrackUrl =
+            window.location.origin +
+            '/livestream/lnurl/t/' +
+            this.livestream.livestream.current_track
         })
-        .catch(err => {
-          LNbits.utils.notifyApiError(err)
-        })
+        .catch(LNbits.utils.notifyApiError)
     },
     startPaymentNotifier() {
       this.cancelListener()
+      if (!this.selectedWallet) return
+      try {
+        const url = new URL(window.location)
+        url.protocol = url.protocol === 'https:' ? 'wss' : 'ws'
+        url.pathname = `/api/v1/ws/${this.selectedWallet.inkey}`
+        const ws = new WebSocket(url)
+        ws.onopen = () => {
+          console.debug('WebSocket connection opened', ws)
+        }
+        ws.onmessage = async ({data}) => {
+          const payment = JSON.parse(data).payment
+          if (!payment) return
+          if (!payment.extra || payment.extra.tag != 'livestream') return
 
-      this.cancelListener = LNbits.events.onInvoicePaid(
-        this.selectedWallet,
-        payment => {
           let satoshiAmount = Math.round(payment.amount / 1000)
           let trackName = (
             this.tracksMap[payment.extra.track] || {name: '[unknown]'}
@@ -88,7 +111,14 @@ window.app = Vue.createApp({
             actions: [{label: 'Dismiss', color: 'white', handler: () => {}}]
           })
         }
-      )
+        ws.onclose = () => {
+          console.debug('WebSocket connection closed', ws)
+        }
+        this.cancelListener = () => ws.close()
+      } catch (err) {
+        console.warn(err)
+        LNbits.utils.notifyApiError(err)
+      }
     },
     addTrack() {
       let {id, name, producer, price_sat, download_url} = this.trackDialog.data
@@ -207,5 +237,8 @@ window.app = Vue.createApp({
   },
   created() {
     this.selectedWallet = this.g.user.wallets[0]
+  },
+  unmounted() {
+    this.cancelListener()
   }
 })
