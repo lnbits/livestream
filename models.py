@@ -7,10 +7,10 @@ from pydantic import BaseModel
 
 class CreateTrack(BaseModel):
     name: str = Query(...)
-    download_url: str = Query(None)
-    price_msat: int = Query(None, ge=0)
-    producer_id: str = Query(None)
-    producer_name: str = Query(None)
+    download_url: str | None = Query(None)
+    price_msat: int | None = Query(None, ge=0)
+    producer_id: str | None = Query(None)
+    producer_name: str | None = Query(None)
 
 
 class Livestream(BaseModel):
