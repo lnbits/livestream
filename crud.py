@@ -69,13 +69,15 @@ async def create_track(
     producer: str,
     data: CreateTrack,
 ) -> Track:
-    track = Track(
-        id=urlsafe_short_hash(),
-        livestream=livestream,
-        producer=producer,
-        name=data.name,
-        download_url=data.download_url,
-        price_msat=data.price_msat,
+    track = Track.model_validate(
+        {
+            "id": urlsafe_short_hash(),
+            "livestream": livestream,
+            "producer": producer,
+            "name": data.name,
+            "download_url": data.download_url,
+            "price_msat": data.price_msat,
+        }
     )
     await db.insert("livestream.tracks", track)
     return track

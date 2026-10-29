@@ -12,7 +12,7 @@ from lnurl import (
     MilliSatoshi,
     UrlAction,
 )
-from pydantic import parse_obj_as
+from pydantic import TypeAdapter
 
 from .crud import get_livestream, get_livestream_by_track, get_track
 
@@ -33,9 +33,8 @@ async def lnurl_livestream(
     if not track:
         return LnurlErrorResponse(reason="Track not found.")
 
-    url = parse_obj_as(
-        CallbackUrl,
-        str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
+    url = TypeAdapter(CallbackUrl).validate_python(
+        str(request.url_for("livestream.lnurl_callback", track_id=track.id))
     )
 
     return LnurlPayResponse(
@@ -55,9 +54,8 @@ async def lnurl_track(
     if not track:
         return LnurlErrorResponse(reason="Track not found.")
 
-    url = parse_obj_as(
-        CallbackUrl,
-        str(request.url_for("livestream.lnurl_callback", track_id=track.id)),
+    url = TypeAdapter(CallbackUrl).validate_python(
+        str(request.url_for("livestream.lnurl_callback", track_id=track.id))
     )
     return LnurlPayResponse(
         callback=url,
@@ -118,15 +116,17 @@ async def lnurl_callback(
         },
     )
 
-    invoice = parse_obj_as(LightningInvoice, LightningInvoice(payment.bolt11))
+    invoice = TypeAdapter(LightningInvoice).validate_python(
+        LightningInvoice(payment.bolt11)
+    )
     assert track.price_msat
     if not track.download_url or amount_received < track.price_msat:
         return LnurlPayActionResponse(pr=invoice)
 
     url = request.url_for("livestream.track_redirect_download", track_id=track.id)
     url_with_query = f"{url}?p={payment.payment_hash}"
-    success_action_url = parse_obj_as(CallbackUrl, url_with_query)
-    message = parse_obj_as(Max144Str, f"Download {track.name}")
+    success_action_url = TypeAdapter(CallbackUrl).validate_python(url_with_query)
+    message = TypeAdapter(Max144Str).validate_python(f"Download {track.name}")
     action = UrlAction(
         description=message,
         url=success_action_url,
