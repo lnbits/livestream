@@ -19,7 +19,11 @@ from .crud import get_livestream, get_livestream_by_track, get_track
 livestream_lnurl_router = APIRouter()
 
 
-@livestream_lnurl_router.get("/lnurl/{ls_id}", name="livestream.lnurl_livestream")
+@livestream_lnurl_router.get(
+    "/lnurl/{ls_id}",
+    name="livestream.lnurl_livestream",
+    openapi_extra={"x-lnbits-local-lnurl": True},
+)
 async def lnurl_livestream(
     ls_id: str, request: Request
 ) -> LnurlPayResponse | LnurlErrorResponse:
@@ -46,7 +50,11 @@ async def lnurl_livestream(
     )
 
 
-@livestream_lnurl_router.get("/lnurl/t/{track_id}", name="livestream.lnurl_track")
+@livestream_lnurl_router.get(
+    "/lnurl/t/{track_id}",
+    name="livestream.lnurl_track",
+    openapi_extra={"x-lnbits-local-lnurl": True},
+)
 async def lnurl_track(
     track_id, request: Request
 ) -> LnurlPayResponse | LnurlErrorResponse:
@@ -66,7 +74,11 @@ async def lnurl_track(
     )
 
 
-@livestream_lnurl_router.get("/lnurl/cb/{track_id}", name="livestream.lnurl_callback")
+@livestream_lnurl_router.get(
+    "/lnurl/cb/{track_id}",
+    name="livestream.lnurl_callback",
+    openapi_extra={"x-lnbits-local-lnurl": True},
+)
 async def lnurl_callback(
     request: Request, track_id: str, amount: int, comment: str | None = None
 ) -> LnurlPayActionResponse | LnurlErrorResponse:
